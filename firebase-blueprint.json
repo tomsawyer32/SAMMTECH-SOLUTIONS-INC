@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "UserProfile",
+      "description": "User cryptographic wallet and sync state",
+      "type": "object",
+      "properties": {
+        "address": { "type": "string", "description": "Virtual Onion network address" },
+        "privateKey": { "type": "string", "description": "Wallet private key" },
+        "publicKey": { "type": "string", "description": "Wallet public key" },
+        "seedPhrase": { "type": "string", "description": "Wallet mnemonic backup seed" },
+        "balanceArc": { "type": "number", "description": "ARC coin balance" },
+        "balanceBtc": { "type": "number", "description": "BTC coin balance" },
+        "isEncrypted": { "type": "boolean", "description": "Encryption active status" },
+        "mixingEnabled": { "type": "boolean", "description": "Onion coin tumbler mixing state" },
+        "isSynced": { "type": "boolean", "description": "Speedforce network sync state" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["address", "privateKey", "publicKey", "seedPhrase", "balanceArc", "balanceBtc", "isEncrypted", "mixingEnabled", "isSynced", "createdAt", "updatedAt"]
+    },
+    "transaction": {
+      "title": "Transaction",
+      "description": "A ledger record for a casino operation, wager, or automated zap trigger",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Transaction unique identifier" },
+        "userId": { "type": "string", "description": "Security owner ID" },
+        "timestamp": { "type": "string", "description": "Timestamp formatted string" },
+        "type": { "type": "string", "enum": ["deposit", "withdraw", "wager", "payout", "zap"] },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["ARC", "BTC"] },
+        "status": { "type": "string", "enum": ["pending", "signed", "confirmed"] },
+        "txHash": { "type": "string" },
+        "recipientOrIssuer": { "type": "string" },
+        "zapTriggered": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "timestamp", "type", "amount", "currency", "status", "txHash", "recipientOrIssuer"]
+    },
+    "contract": {
+      "title": "Contract",
+      "description": "User-deployed Solidity contract within the Stark Onion VM context",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "status": { "type": "string", "enum": ["inactive", "deployed", "active"] },
+        "address": { "type": "string" },
+        "gasLimit": { "type": "number" },
+        "runs": { "type": "number" },
+        "logs": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "code", "status", "address", "gasLimit", "runs", "logs", "createdAt"]
+    },
+    "zap": {
+      "title": "Zap",
+      "description": "Stark-Zap trigger mapping with custom webhook endpoints and templates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "eventName": { "type": "string" },
+        "targetWebhook": { "type": "string" },
+        "payloadTemplate": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "executionCount": { "type": "number" },
+        "recentExecutions": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "eventName", "targetWebhook", "payloadTemplate", "isActive", "executionCount", "recentExecutions", "updatedAt"]
+    },
+    "chat": {
+      "title": "Chat",
+      "description": "Message logs between the Stark operative and the Jarvis voice companion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "sender": { "type": "string", "enum": ["user", "jarvis"] },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userId", "sender", "text", "timestamp"]
+    },
+    "mail": {
+      "title": "Mail",
+      "description": "A secure Stark mail communication from characters like Pepper Potts or Nick Fury",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "sender": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "time": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "sender", "subject", "body", "time", "read"]
+    },
+    "socialPost": {
+      "title": "SocialPost",
+      "description": "A public or decrypted post from the encrypted secure Stark network feed",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "author": { "type": "string" },
+        "handle": { "type": "string" },
+        "avatar": { "type": "string" },
+        "content": { "type": "string" },
+        "time": { "type": "string" },
+        "likes": { "type": "number" }
+      },
+      "required": ["id", "userId", "author", "handle", "avatar", "content", "time", "likes"]
+    },
+    "discordMessage": {
+      "title": "DiscordMessage",
+      "description": "A simulated hacker chat thread update inside the Stark Industries intranet",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "user": { "type": "string" },
+        "text": { "type": "string" },
+        "time": { "type": "string" },
+        "avatar": { "type": "string" }
+      },
+      "required": ["id", "userId", "user", "text", "time", "avatar"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "userProfile",
+      "description": "User profile with their central cryptographic wallet details"
+    },
+    "/users/{userId}/transactions/{txId}": {
+      "schema": "transaction",
+      "description": "Individual deposit/wager/payout crypto transaction ledger logs"
+    },
+    "/users/{userId}/contracts/{contractId}": {
+      "schema": "contract",
+      "description": "Smart contracts deployed on user Stark Onion VM context"
+    },
+    "/users/{userId}/zaps/{zapId}": {
+      "schema": "zap",
+      "description": "Automated workflow trigger states and execution charts"
+    },
+    "/users/{userId}/chats/{chatId}": {
+      "schema": "chat",
+      "description": "History logs of chat dialogs with Jarvis speech module"
+    },
+    "/users/{userId}/mails/{mailId}": {
+      "schema": "mail",
+      "description": "User's customized Stark Industries secure terminal email inbox"
+    },
+    "/users/{userId}/posts/{postId}": {
+      "schema": "socialPost",
+      "description": "User's customized social media postings on Stark decentralized feed"
+    },
+    "/users/{userId}/discord/{msgId}": {
+      "schema": "discordMessage",
+      "description": "Simulated chat thread entries in the encrypted hacker console channel"
+    }
+  }
+}

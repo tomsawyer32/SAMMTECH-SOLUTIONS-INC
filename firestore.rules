@@ -1,0 +1,185 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation schemas
+    function isValidUserProfile(data) {
+      return data.address is string && data.address.size() <= 128
+        && data.privateKey is string && data.privateKey.size() <= 128
+        && data.publicKey is string && data.publicKey.size() <= 132
+        && data.seedPhrase is string && data.seedPhrase.size() <= 200
+        && data.balanceArc is number && data.balanceArc >= 0.0 && data.balanceArc <= 1000000000.0
+        && data.balanceBtc is number && data.balanceBtc >= 0.0 && data.balanceBtc <= 21000000.0
+        && data.isEncrypted is bool
+        && data.mixingEnabled is bool
+        && data.isSynced is bool;
+    }
+
+    function isValidTransaction(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.timestamp is string && data.timestamp.size() <= 100
+        && data.type is string && (data.type == 'deposit' || data.type == 'withdraw' || data.type == 'wager' || data.type == 'payout' || data.type == 'zap')
+        && data.amount is number && data.amount >= 0.0
+        && data.currency is string && (data.currency == 'ARC' || data.currency == 'BTC')
+        && data.status is string && (data.status == 'pending' || data.status == 'signed' || data.status == 'confirmed')
+        && data.txHash is string && data.txHash.size() <= 128
+        && data.recipientOrIssuer is string && data.recipientOrIssuer.size() <= 128;
+    }
+
+    function isValidContract(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() <= 100
+        && data.code is string && data.code.size() <= 10000
+        && data.status is string && (data.status == 'inactive' || data.status == 'deployed' || data.status == 'active')
+        && data.address is string && data.address.size() <= 128
+        && data.gasLimit is number && data.gasLimit >= 0
+        && data.runs is number && data.runs >= 0
+        && data.logs is list && data.logs.size() <= 100;
+    }
+
+    function isValidZap(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.eventName is string && data.eventName.size() <= 100
+        && data.targetWebhook is string && data.targetWebhook.size() <= 500
+        && data.payloadTemplate is string && data.payloadTemplate.size() <= 500
+        && data.isActive is bool
+        && data.executionCount is number && data.executionCount >= 0
+        && data.recentExecutions is list && data.recentExecutions.size() <= 100;
+    }
+
+    function isValidChat(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.sender is string && (data.sender == 'user' || data.sender == 'jarvis')
+        && data.text is string && data.text.size() <= 5000
+        && data.timestamp is string && data.timestamp.size() <= 100;
+    }
+
+    function isValidMail(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.sender is string && data.sender.size() <= 100
+        && data.subject is string && data.subject.size() <= 200
+        && data.body is string && data.body.size() <= 2000
+        && data.time is string && data.time.size() <= 100
+        && data.read is bool;
+    }
+
+    function isValidPost(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.author is string && data.author.size() <= 100
+        && data.handle is string && data.handle.size() <= 100
+        && data.avatar is string && data.avatar.size() <= 20
+        && data.content is string && data.content.size() <= 1000
+        && data.time is string && data.time.size() <= 100
+        && data.likes is number && data.likes >= 0;
+    }
+
+    function isValidDiscordMessage(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.user is string && data.user.size() <= 100
+        && data.text is string && data.text.size() <= 1000
+        && data.time is string && data.time.size() <= 100
+        && data.avatar is string && data.avatar.size() <= 20;
+    }
+
+    // Rules for individual collections
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isOwner(userId) && isValidUserProfile(incoming()) 
+                     && incoming().createdAt == existing().createdAt 
+                     && incoming().updatedAt == request.time
+                     && incoming().diff(existing()).affectedKeys().hasOnly(['balanceArc', 'balanceBtc', 'isSynced', 'isEncrypted', 'mixingEnabled', 'privateKey', 'publicKey', 'seedPhrase', 'address', 'updatedAt']);
+      allow delete: if false;
+
+      match /transactions/{txId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(txId) && isValidTransaction(incoming()) && incoming().userId == userId;
+        allow update: if isOwner(userId) && isValidTransaction(incoming()) && incoming().userId == userId 
+                       && existing().status != 'confirmed'
+                       && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+        allow delete: if false;
+      }
+
+      match /contracts/{contractId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(contractId) && isValidContract(incoming()) && incoming().userId == userId;
+        allow update: if isOwner(userId) && isValidContract(incoming()) && incoming().userId == userId;
+        allow delete: if isOwner(userId);
+      }
+
+      match /zaps/{zapId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(zapId) && isValidZap(incoming()) && incoming().userId == userId;
+        allow update: if isOwner(userId) && isValidZap(incoming()) && incoming().userId == userId;
+        allow delete: if isOwner(userId);
+      }
+
+      match /chats/{chatId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(chatId) && isValidChat(incoming()) && incoming().userId == userId;
+        allow delete: if isOwner(userId);
+      }
+
+      match /mails/{mailId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(mailId) && isValidMail(incoming()) && incoming().userId == userId;
+        allow update: if isOwner(userId) && isValidMail(incoming()) && incoming().userId == userId;
+        allow delete: if isOwner(userId);
+      }
+
+      match /posts/{postId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(postId) && isValidPost(incoming()) && incoming().userId == userId;
+        allow update: if isOwner(userId) && isValidPost(incoming()) && incoming().userId == userId;
+        allow delete: if isOwner(userId);
+      }
+
+      match /discord/{msgId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(msgId) && isValidDiscordMessage(incoming()) && incoming().userId == userId;
+        allow update: if isOwner(userId) && isValidDiscordMessage(incoming()) && incoming().userId == userId;
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

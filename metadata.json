@@ -1,0 +1,11 @@
+{
+  "name": "Remix: P0inT-Z3R0",
+  "description": "Virtual Cyberpunk Casino running over highly anonymous Onion.share nodes, integrated with a Speedforce sync multi-window suite and the Emerald Eye of Agamotto high-fidelity video recorder with automatic multiplier bonuses.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
